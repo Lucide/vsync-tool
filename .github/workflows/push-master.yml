@@ -49,5 +49,3 @@ jobs:
           tag: 'latest'
           artifacts: 'cmake-build-release/vsync.exe'
           bodyFile: "body.md"
-
-    retention-days: # optional

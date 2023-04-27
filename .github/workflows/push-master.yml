@@ -50,7 +50,7 @@ jobs:
         with:
           allowUpdates: true
           artifactErrorsFailBuild: true
-          generateReleaseNotes: true
+          omitBody: true
           commit: 'master'
           tag: 'latest'
           artifacts: 'cmake-build-release/vsync.exe'

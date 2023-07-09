@@ -9,18 +9,21 @@
 #include <assert.h>
 #include <locale.h>
 #include <windows.h>
+#include <io.h>
 // #include <stringapiset.h>
 #include "nvapi.h"
 #include "NvApiDriverSettings.h"
 
 #define ERROR_HEADER "error: "
 #define eprintf(STR, ...) fprintf(stderr, ERROR_HEADER STR "\n", ##__VA_ARGS__)
-#define NUM_ARGS_REQUIRED 1
+#define BACKUP_FILENAME L"settings"
+int numStaticArgs = 1;
 
 typedef enum Mode {
 	MODE_SET = 1,
-	MODE_RESTORE = 2,
-	MODE_HELP = 3
+	MODE_FORCE_SET = 3,
+	MODE_RESTORE = 4,
+	MODE_HELP = 8
 } Mode;
 
 typedef struct VSyncTriplet {
@@ -283,15 +286,20 @@ int getAppsHProfiles(NvDRSSessionHandle const hSession, WCHAR const *const *cons
 }
 
 void printHelp(void) {
-	puts("vsync.exe [command] [executables]... \nCommands:");
+	puts("vsync.exe [command] [-Force] [executables]... \nCommands:");
 	puts("set\t\tenables vsync");
-	puts("restore\t\trestore previous vsync settings\n");
+	puts("restore\t\trestore previous vsync settings");
+	puts("restore -Force\toverwrite settings file\n");
 	puts("explicit executable paths are only required if the associated profile contains vSync options\n");
 }
 
 Mode parseArg(int const argc, WCHAR const *const *const argv) {
 	if(argc >= 2) {
 		if(wcscmp(argv[1], L"set") == 0) {
+			if(argc >= 3 && wcscmp(argv[2], L"-Force") == 0) {
+				++numStaticArgs;
+				return MODE_FORCE_SET;
+			}
 			return MODE_SET;
 		}
 		if(wcscmp(argv[1], L"restore") == 0) {
@@ -330,7 +338,7 @@ int wmain(int argc, wchar_t **argv) {
 	nvapiExceptionFatal(NvAPI_DRS_CreateSession(&hSession));
 	atexit(NvAPI_DRS_DestroySessionExitHandler);
 
-	int const appArgc = argc-NUM_ARGS_REQUIRED-1;
+	int const appArgc = argc-numStaticArgs-1;
 	VSyncTriplet globalVSyncTriplet = vSyncOn;
 	VSyncTriplet const *appVSyncTriplets = &vSyncOn;
 
@@ -348,17 +356,24 @@ int wmain(int argc, wchar_t **argv) {
 
 		NvDRSProfileHandle *const hAppProfiles = malloc((unsigned)appArgc*sizeof(NvDRSProfileHandle));
 		VSyncTriplet *tempVSyncTriplets = malloc((unsigned)appArgc*sizeof(VSyncTriplet));
-		int done = getAppsHProfiles(hSession, (WCHAR const *const *)(argv+NUM_ARGS_REQUIRED+1), hAppProfiles, appArgc);
+		int done = getAppsHProfiles(hSession, (WCHAR const *const *)(argv+numStaticArgs+1), hAppProfiles, appArgc);
 		done -= appArgc-getVSyncTriplets(hSession, hAppProfiles, tempVSyncTriplets, appArgc);
 		free(hAppProfiles);
 		appVSyncTriplets = tempVSyncTriplets;
 		if(done != appArgc) {
 			eprintf("successfully retrieved %d/%d apps from backup", done, appArgc);
 		}
+		if(_wremove(BACKUP_FILENAME)) {
+			eprintf("failed to delete settings file");
+		}
 	}
 	nvapiExceptionFatal(NvAPI_DRS_LoadSettings(hSession));
-	if(mode == MODE_SET) {
-		nvapiExceptionFatal(NvAPI_DRS_SaveSettingsToFile(hSession, L"settings"));
+	if(mode&MODE_SET) {
+		if(_waccess(BACKUP_FILENAME, 0) || mode == MODE_FORCE_SET) {
+			nvapiExceptionFatal(NvAPI_DRS_SaveSettingsToFile(hSession, BACKUP_FILENAME));
+		} else {
+			printf("backup already exists, skipping\n");
+		}
 	}
 	NvDRSProfileHandle globalProfile;
 	nvapiExceptionFatal(NvAPI_DRS_GetCurrentGlobalProfile(hSession, &globalProfile));
@@ -367,7 +382,7 @@ int wmain(int argc, wchar_t **argv) {
 	}
 
 	NvDRSProfileHandle *const hAppProfiles = malloc((unsigned)appArgc*sizeof(NvDRSProfileHandle));
-	int done = getAppsHProfiles(hSession, (WCHAR const *const *)(argv+NUM_ARGS_REQUIRED+1), hAppProfiles, appArgc);
+	int done = getAppsHProfiles(hSession, (WCHAR const *const *)(argv+numStaticArgs+1), hAppProfiles, appArgc);
 	done -= appArgc-setVSyncTriplets(hSession, hAppProfiles, appVSyncTriplets, appArgc);
 	free(hAppProfiles);
 	if(done != appArgc) {

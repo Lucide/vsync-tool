@@ -12,7 +12,8 @@ target_include_directories(nvapi
 
 add_executable(vsync main.c)
 set_target_properties(vsync PROPERTIES
-                      OUTPUT_NAME vsync
+                      OUTPUT_NAME vsync-tool
+                      COMPILE_DEFINITIONS _CRT_NONSTDC_NO_WARNINGS
                       MSVC_RUNTIME_LIBRARY "$<IF:$<CONFIG:Debug>,MultiThreadedDebugDLL,MultiThreaded>")
 target_compile_options(vsync PRIVATE "/W4")
 target_link_libraries(vsync

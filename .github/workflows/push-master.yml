@@ -53,4 +53,4 @@ jobs:
           omitBody: true
           commit: 'master'
           tag: 'latest'
-          artifacts: 'cmake-build-release/vsync.exe'
+          artifacts: 'cmake-build-release/vsync-tool.exe'

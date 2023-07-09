@@ -3,10 +3,12 @@
 A small utility to set and restore vSync settings. Useful when [sunshine](https://github.com/LizardByte/Sunshine) requires Fast Sync off.
 
 ```txt
-vsync.exe [command] [executables]...
+vsync.exe [command] [-Force] [executables]...
 Commands:
 set             enables vsync
 restore         restore previous vsync settings
+restore -Force  overwrite settings file
+
 explicit executable paths are only required if the associated profile contains vSync options
 ```
 

@@ -6,8 +6,8 @@ A small utility to set and restore vSync settings. Useful when [sunshine](https:
 vsync.exe [command] [-Force] [executables]...
 Commands:
 set             enables vsync
+set -Force      overwrite settings file
 restore         restore previous vsync settings
-restore -Force  overwrite settings file
 
 explicit executable paths are only required if the associated profile contains vSync options
 ```
